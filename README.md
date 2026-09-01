@@ -97,6 +97,12 @@ See [docs/wiring.md](docs/wiring.md). Short version: relay signal on pin 18,
 arm switch on pin 16 to ground, and **the solenoid's 12V supply must not come
 from the Jetson**.
 
+## Parts
+
+See [docs/parts.md](docs/parts.md) for the full list with sourcing links —
+compute/camera/display, the firing circuit, the pneumatic barrel adapter, and
+the printed enclosure.
+
 ## Tests
 
 ```bash
