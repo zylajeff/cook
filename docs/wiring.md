@@ -11,7 +11,7 @@ position), which is what `Jetson.GPIO` is configured for in
 | Relay IN1 | 18 | `COOK_GPIO_RELAY_PIN` — logic signal only |
 | Relay DC+/DC- | — | **12V, from the same battery pack as the solenoid — not the Jetson.** The relay is a Songle SRD-12VDC-SL-C, a 12V-coil part; the board's own datasheet/silkscreen confirms it. Jetson only supplies IN1. |
 | Jetson GND | any GND pin | Tie to the 12V pack's negative terminal — IN1's optocoupler needs a shared ground reference with DC-, same as the solenoid's ground-sharing requirement below. |
-| Arm switch | 16 | `COOK_GPIO_ARM_SWITCH_PIN`, **needs an external 10kΩ pull-up to 3.3V** (pin 1 or 17) — see "The arm switch" below |
+| Arm switch | 16 | `COOK_GPIO_ARM_SWITCH_PIN`, **needs an external 1kΩ pull-up to 3.3V** (pin 1 or 17) — see "The arm switch" below |
 | Arm switch return | 14 | GND |
 
 Relay terminal blocks, from the board itself:
@@ -182,11 +182,22 @@ ignores `setup()`'s `pull_up_down` argument (it'll even print
 watching for it) — the internal pull-up the software asks for never actually
 gets applied, so pin 16 is left floating when the switch is open rather than
 held HIGH. Symptom: wiring and software both look correct, but arming doesn't
-reliably toggle. Fix is a real external pull-up: **10kΩ resistor from pin 16
-to a 3.3V pin (pin 1 or 17)**. With that in place, the software's
-`arm_switch_active_low: True` default and the fail-safe "broken wire reads
-SAFE" behavior work as originally intended — it's the internal pull-up
-specifically that doesn't exist here, not the pull-up concept itself.
+reliably toggle.
+
+That's only half the story, though: a first attempt at a 10kΩ external
+pull-up **still** didn't fix it. Root cause, confirmed on real hardware: pin
+16 (and pin 15, tried as an alternative and ruled out — this isn't specific
+to pin 16) has an internal pull-*down* baked in at the hardware/pinmux level
+that `Jetson.GPIO` cannot disable. It's strong enough that a 10kΩ external
+pull-up only reached about 1V open-circuit — below the HIGH threshold —
+instead of the 3.3V it should read. **1kΩ**, not 10kΩ, is what actually
+overpowers the internal pull-down. Fix is a real external pull-up: **1kΩ
+resistor from pin 16 to a 3.3V pin (pin 1 or 17)**. With that in place, the
+software's `arm_switch_active_low: True` default and the fail-safe "broken
+wire reads SAFE" behavior work as originally intended — it's the internal
+pull-up specifically that doesn't exist here, not the pull-up concept
+itself, and the pull-down means the resistor also has to be stronger than
+the 10kΩ a plain floating-pin fix would normally call for.
 
 Debouncing is handled in software (50ms); no RC network needed.
 
