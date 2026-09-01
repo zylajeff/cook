@@ -133,6 +133,20 @@ and easy to redo if you rewire later. Fuse goes on the **positive** lead,
 between the battery and the distribution block, so it protects the whole 12V
 rail (relay coil + solenoid coil) with one part.
 
+Cheap inline fuse holders often ship as a single continuous loop of wire
+threaded through both ends of the holder body, rather than two separate
+leads — cut the loop once, at the point opposite the housing, to get the
+"from battery" and "to distribution block" leads shown above.
+
+Fuse color (standard blade-style ATO/ATC/Mini code — glass 3AG/AGC fuses
+aren't reliably color-coded the same way, so read the rating printed on the
+fuse itself if the holder takes one of those instead):
+
+| Rating | Color |
+|---|---|
+| 1A | Black |
+| 2A | Gray |
+
 ### The barrel
 
 The solenoid's air outlet is 1/8" NPT — much smaller than a 1/2" PVC barrel
