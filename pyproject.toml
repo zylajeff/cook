@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=60"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cook-vision"
+version = "0.2.0"
+description = "Block-M seeker and pneumatic dart launcher control for the Jetson Nano"
+requires-python = ">=3.6"
+# numpy is deliberately NOT a hard dependency. On the Jetson, OpenCV is built
+# against the system numpy, and letting pip upgrade it breaks cv2 with
+# "numpy.core.multiarray failed to import". Install with --no-deps there.
+dependencies = [
+    "dataclasses>=0.8; python_version < '3.7'",
+]
+
+[project.optional-dependencies]
+# The Jetson ships its own CUDA/GStreamer-enabled OpenCV; do not install a wheel
+# over it. Use this extra only on a development workstation.
+dev = [
+    "opencv-python>=4.5",
+    "pytest>=7.0",
+]
+jetson = [
+    "Jetson.GPIO>=2.0",
+]
+
+[project.scripts]
+cook-vision = "cook_vision.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
