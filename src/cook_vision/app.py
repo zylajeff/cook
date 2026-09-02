@@ -14,6 +14,7 @@ from .detectors import build_detector
 from .firing import FireController
 from .hardware import ArmSwitch, MockGpioBackend, SolenoidRelay, build_backend
 from .hud import SeekerHud
+from .sound import build_soundboard
 from .tracker import TargetTracker
 
 LOGGER = logging.getLogger("cook")
@@ -54,6 +55,7 @@ class SeekerApp:
         self.relay = SolenoidRelay(self.gpio, config.gpio, config.firing.max_pulse_seconds)
         self.controller = FireController(self.relay, self.arm_switch, config.firing)
 
+        self.sound = build_soundboard(config.sound)
         self.hud = SeekerHud(config.display, config.firing)
         self._frame_times = deque(maxlen=30)
         self._show_mask = False
@@ -144,6 +146,7 @@ class SeekerApp:
 
             if self.controller.shots != shots_before:
                 self.hud.flash()
+                self.sound.play_fire()
                 shots_before = self.controller.shots
 
             if self.config.display.headless:

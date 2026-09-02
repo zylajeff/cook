@@ -91,6 +91,27 @@ COOK_FIRING_PULSE_SECONDS=0.18 COOK_GPIO_RELAY_PIN=22 cook-vision
 Useful ones: `COOK_DETECTOR_CONFIDENCE`, `COOK_DETECTOR_MAX_SHAPE_DISTANCE`,
 `COOK_FIRING_AUTO_FIRE`, `COOK_FIRING_BORE_TOLERANCE`, `COOK_CAMERA_FLIP_METHOD`.
 
+## Sound
+
+Every shot plays `assets/sounds/trouble_with_the_snap.mp3` — the ABC/ESPN call
+of Blake O'Neill's muffed punt snap, MSU 2015 — on a daemon thread, so a slow
+or missing player never touches the frame budget. Needs one of `mpg123`
+(preferred; decodes mp3 directly), `ffplay`, `cvlc`, or `aplay` on `PATH`:
+
+```bash
+sudo apt install mpg123
+```
+
+With none installed, sound silently disables itself (a warning is logged) and
+the launcher still fires. `COOK_SOUND_ENABLED=false` turns it off deliberately.
+
+Default output device is the Nano's HDMI audio (`plughw:0,3`) so a clip plays
+through the display's speakers, not a jack nothing's plugged into. If the
+display was off or asleep when the Nano booted, its HDMI audio jack-sense can
+stay stuck `off` even though video works fine — reboot the Nano with the
+display already on. Override the device with `COOK_SOUND_OUTPUT_DEVICE`
+(find the right `card,device` with `aplay -l`).
+
 ## Wiring
 
 See [docs/wiring.md](docs/wiring.md). Short version: relay signal on pin 18,

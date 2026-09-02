@@ -138,6 +138,21 @@ class GpioConfig:
 
 
 @dataclass
+class SoundConfig:
+    enabled: bool = True
+    #: Played once per shot, off the main thread -- see sound.py for why.
+    fire_clip: str = "assets/sounds/trouble_with_the_snap.mp3"
+    #: ``auto`` picks the first of mpg123/ffplay/cvlc/aplay found on PATH.
+    player: str = "auto"
+    #: ALSA device for mpg123/aplay. burninator's display audio is HDMI, a
+    #: separate card from the onboard jack, and its output card/device number
+    #: only shows up as connected if the display was already on and awake
+    #: before the Nano booted -- confirmed via `aplay -l` + `amixer -c 0
+    #: contents` (HDMI/DP Jack). Empty string leaves the player's own default.
+    output_device: str = "plughw:0,3"
+
+
+@dataclass
 class DisplayConfig:
     fullscreen: bool = True
     window_name: str = "COOK // SEEKER"
@@ -161,6 +176,7 @@ class Config:
     tracker: TrackerConfig = field(default_factory=TrackerConfig)
     firing: FiringConfig = field(default_factory=FiringConfig)
     gpio: GpioConfig = field(default_factory=GpioConfig)
+    sound: SoundConfig = field(default_factory=SoundConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
 
     @classmethod
