@@ -37,8 +37,8 @@
 // ============================================================
 
 // ---- WHICH PART TO RENDER ----
-render_front_shell = false;
-render_rear_shell  = true;
+render_front_shell = true;
+render_rear_shell  = false;
 render_assembly    = false;
 
 // ---- GLOBAL TOLERANCES ----
