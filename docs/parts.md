@@ -44,8 +44,10 @@ vendor — generic plumbing/hardware store parts (see
 ## Enclosure
 
 Printed, not purchased — see [hardware/enclosure.scad](../hardware/enclosure.scad).
-PETG or ASA for any part with a snap tab (PLA gets brittle under repeated
-flexing); PLA is fine for the base plate and pipe clips.
+Two-part telescoping box (front shell with the display/switch/camera face and
+CO2 hopper, rear shell with Nano/battery/protoboard bays), no fasteners. PETG
+or ASA — the snap bump that holds the two halves together needs to flex
+without going brittle.
 
 ## Not used in round one
 
