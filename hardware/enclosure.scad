@@ -38,8 +38,8 @@
 
 // ---- WHICH PART TO RENDER ----
 render_box      = false;
-render_panel    = true;
-render_assembly = false;
+render_panel    = false;
+render_assembly = true;
 
 // ---- GLOBAL TOLERANCES ----
 wall      = 2.4;   // shell wall thickness (~6 perimeters at 0.4mm nozzle)
@@ -123,40 +123,82 @@ co2_len     = 68;
 co2_count   = 3;      // channels, stacked vertically — one cartridge each, lying flat
 
 // ============================================================
-// FRONT-FACE LAYOUT — unchanged from v2. Display centered
-// vertically in its own zone; firing switch to its right; camera
-// centered above the display.
+// FRONT-FACE LAYOUT. Display centered vertically in its own zone;
+// camera centered above it; switch shares the top row with the
+// camera instead of sitting beside the display.
+//
+// box_w and box_h are each the larger of two independent floors: the
+// front face's own needs, and the back panel's electronics layout
+// (battery + cable gap + Nano/protoboard — see ELECTRONICS LAYOUT).
+// Getting the printed footprint down to fit a 220mm bed (a friend's
+// printer flagged the earlier version as ~25% too big) meant tuning
+// BOTH floors together, not just one — margins alone couldn't get
+// there (battery + Nano side by side need ~171mm before any margin
+// at all), so the Nano is now mounted ROTATED 90° from its natural
+// resting orientation: its narrower 79mm side sets the column width
+// instead of its 100mm side, trading some width for extra height on
+// the back panel (which had plenty of slack to give). Same reasoning
+// as the battery's own rotation earlier in this file.
 // ============================================================
-side_margin   = 12;   // left/right edge margin
-disp_gap      = 15;   // gap between display's right edge and the switch zone
-switch_zone_w = 40;   // width reserved for the switch mount
+side_margin    = 6;    // left/right edge margin — trimmed from 12; still clear of corner_r
+cam_switch_gap = 15;   // gap between the camera zone and the switch zone (same row now)
+cam_zone_w     = 40;   // width reserved for the camera mount
+switch_zone_w  = 40;   // width reserved for the switch mount
 
 top_margin    = 12;
-cam_zone_h    = 34;   // height reserved for the camera mount
-cam_gap       = 10;   // gap between camera zone and display's top edge
+cam_zone_h    = 34;   // height reserved for the camera/switch row
+cam_gap       = 10;   // gap between that row and the display's top edge
 bottom_margin = 12;
 
-face_w = side_margin + disp_l + disp_gap + switch_zone_w + side_margin;
+// Used here for the electronics floors AND in ELECTRONICS LAYOUT
+// below (battery/Nano/protoboard column positioning) — one
+// definition, so the two can't drift apart.
+component_margin = 3;   // horizontal clearance from each column to the interior wall — thin, this is the tightest margin in the file besides the cable hole itself
+vmargin           = 5;   // vertical clearance within a column (floor/ceiling)
+stack_gap         = 9;   // gap between the Nano and the protoboard stacked above it
+
+display_row_w = disp_l + 2 * side_margin;
+switch_dx     = cam_zone_w / 2 + cam_switch_gap + switch_zone_w / 2;  // switch center, offset from camera center
+top_row_w     = 2 * (switch_dx + switch_zone_w / 2 + side_margin);    // doubled: camera sits at X=0, so box_w must cover the switch's overhang on both sides even though only the right side is actually used
+face_w        = max(display_row_w, top_row_w);
+
+cable_gap_min = 16;  // gap between the battery and Nano columns — just enough for the 12mm cable hole (see back_panel()) plus ~2mm clearance each side; tighter than most of this file's other clearances
+electronics_w = component_margin * 2 + batt_w + cable_gap_min + nano_w + 2 * wall;  // nano_w, not nano_l — rotated, see above
+
+box_w = max(face_w, electronics_w);
+
 face_h = top_margin + cam_zone_h + cam_gap + disp_w + bottom_margin;
 
-box_w = face_w;
-box_h = face_h;
+batt_col_h    = batt_l + 2 * vmargin;                     // battery column height (already rotated, unaffected by the Nano's rotation)
+stack_col_h   = nano_l + stack_gap + pcb_w + 2 * vmargin;  // nano_l, not nano_w — rotated, so the Nano's LONG axis is now vertical
+electronics_h = max(batt_col_h, stack_col_h) + 2 * wall;
+
+box_h = max(face_h, electronics_h);
+
 inner_w = box_w - 2 * wall;
 inner_h = box_h - 2 * wall;
 
-// Display center, measured from the face's own center origin.
-disp_cx = -face_w / 2 + side_margin + disp_l / 2;
+// FLAG: reasoned from the numbers, not rendered. Both floors are
+// close to each other by design (box_w: face_w 176.9 vs electronics_w
+// 176.8; box_h: face_h 170.0 vs electronics_h 173.8) — re-check both
+// sides if you change ANY of side_margin, component_margin, the cable
+// gap, or any component dimension, since which one binds can flip.
+
+// Display and camera centered on the box itself — box_w/box_h may be
+// wider/taller than the front face strictly needs (see above), in
+// which case this just adds equal breathing room on both sides
+// rather than pushing the display off-center.
+disp_cx = 0;
 disp_cy = -face_h / 2 + bottom_margin + disp_w / 2;
 
-// Switch center, to the right of the display, vertically centered
-// on the display so it reads as part of the same control row.
-switch_cx = disp_cx + disp_l / 2 + disp_gap + switch_zone_w / 2;
-switch_cy = disp_cy;
-
-// Camera center, horizontally centered on the display, in its own
-// zone above it.
+// Camera center, horizontally centered on the display/box, in its
+// own zone above it.
 cam_cx = disp_cx;
 cam_cy = face_h / 2 - top_margin - cam_zone_h / 2;
+
+// Switch center, to the right of the camera, same row.
+switch_cx = cam_cx + switch_dx;
+switch_cy = cam_cy;
 
 // ============================================================
 // BOX DEPTH & THE SLIDE-IN PANEL
@@ -252,39 +294,62 @@ hopper_cy       = 0;       // vertically centered — nothing else competes for 
 // INSIDE face of the back panel (not the box itself) — pull the
 // panel and the whole populated tray comes with it.
 //
-// Battery pack mounted ROTATED 90° from its natural (l x w) resting
-// orientation: footprint here is batt_w wide x batt_l tall instead
-// of batt_l wide x batt_w tall. Reason: the cable pass-through needs
-// to sit at true lower-center (X=0), and batt_l (126mm) is wider
-// than half of inner_w (249.1mm) — even pushed flush against a
-// wall with zero margin, a batt_l-wide battery still crosses X=0 by
-// about 1.5mm, no matter where it's placed. Rotated, its footprint
-// is only batt_w (71mm) wide, fitting in one column with room to
-// spare and leaving the center genuinely clear. Doesn't affect the
-// battery holder itself — it's a plastic AA holder, no orientation-
-// sensitive leads or switch position to worry about.
+// BOTH the battery and the Nano are mounted ROTATED 90° from their
+// natural resting orientation — each for the same reason: the
+// dimension driving column WIDTH is swapped out for the board's
+// narrower one, trading it for extra column HEIGHT instead (the
+// back panel had far more height to spare than width).
+//
+// Battery: footprint here is batt_w wide x batt_l tall instead of
+// batt_l wide x batt_w tall — batt_l (126mm) is wider than half of
+// inner_w, so it can't sit anywhere without crossing the centerline
+// where the cable hole needs to go; rotated, it fits in one column
+// with room to spare. Doesn't affect the holder itself — a plastic
+// AA holder, no orientation-sensitive leads.
+//
+// Nano: footprint here is nano_w wide x nano_l tall instead of
+// nano_l wide x nano_w tall — needed once the whole box got tighter
+// to fit a friend's 220mm print bed (see FRONT-FACE LAYOUT); the
+// Nano's 79mm side is now what sets the column width instead of its
+// 100mm side. Unlike the battery, the Nano's mounting HOLES are
+// real, measured, asymmetric data (see nano_hole_dx/dy up in
+// MEASURE-AND-CONFIRM) — rotating the board means rotating that hole
+// pattern too, done explicitly below rather than hand-recomputing
+// new numbers, so the relationship to the original measurement stays
+// checkable.
 //
 // Battery gets its own column on the left (tall and narrow); Nano
 // and protoboard stack in a column on the right (short and wide);
 // the gap between the two columns is where the cable hole goes.
 // ============================================================
-component_margin = 8;   // clearance from each column to the interior wall
 
+// nano_hole_dx/dy rotated 90° CCW: (x,y) -> (-y,x). The two distinct
+// old_x values become the new dy directly; the two distinct old_y
+// values become dx, negated and reversed. Verified by hand that the
+// spans swap cleanly (old dx span 86 == new dy span; old dy span 58
+// == new dx span) — not rendered.
+nano_mount_dx = [-nano_hole_dy[1], -nano_hole_dy[0]];
+nano_mount_dy = nano_hole_dx;
+
+// component_margin/vmargin/stack_gap are defined up in FRONT-FACE
+// LAYOUT — this column layout is exactly what electronics_w and
+// electronics_h were computed from.
 batt_cx = -inner_w / 2 + batt_w / 2 + component_margin;
-batt_cy = -inner_h / 2 + batt_l / 2 + 5;
+batt_cy = -inner_h / 2 + batt_l / 2 + vmargin;
 
-nano_cx = inner_w / 2 - nano_l / 2 - component_margin;
-nano_cy = -inner_h / 2 + nano_w / 2 + 5;
+nano_cx = inner_w / 2 - nano_w / 2 - component_margin;  // nano_w, not nano_l — rotated
+nano_cy = -inner_h / 2 + nano_l / 2 + vmargin;            // nano_l, not nano_w — rotated
 pcb_cx  = nano_cx;
-pcb_cy  = nano_cy + nano_w / 2 + 9 + pcb_w / 2;  // stacked above the Nano, 9mm gap
+pcb_cy  = nano_cy + nano_l / 2 + stack_gap + pcb_w / 2;  // stacked above the Nano; nano_l is now its half-height
 
-// Cable pass-through (relay/solenoid wiring + Nano's power lead):
-// true lower-center, same spot v2 had it. FLAG: reasoned by hand —
-// the hull(r=6, 16mm apart) it cuts is ~28mm wide, and the gap
-// between the two columns here is ~62mm wide with X=0 sitting about
-// 16.5mm clear of the Nano/protoboard column's edge, so this should
-// clear both columns, but it's a closer margin than most of this
-// file's other clearances.
+// Cable pass-through: just a barrel jack for the Nano's power plus a
+// couple of thin solenoid wires, not a wide bundle — a single 12mm
+// hole (see back_panel()) instead of the old wider oval. True
+// lower-center, same spot v2 had it. The gap between the two columns
+// here is exactly cable_gap_min by construction (see FRONT-FACE
+// LAYOUT), so the hole has only ~2mm clearance on each side —
+// tighter than most of this file's other clearances, worth
+// eyeballing on the first render.
 cable_cx = 0;
 cable_cy = -inner_h / 2 + 20;
 
@@ -511,12 +576,12 @@ module back_panel() {
         // corner skip, and it has to be since the Nano's pegs aren't
         // even symmetric anymore.
         vent_pegs = concat(
-            [for (dx = nano_hole_dx, dy = nano_hole_dy) [nano_cx + dx, nano_cy + dy]],
+            [for (dx = nano_mount_dx, dy = nano_mount_dy) [nano_cx + dx, nano_cy + dy]],
             [for (x = [-1, 1], y = [-1, 1]) [pcb_cx + x * (pcb_l / 2 - 6), pcb_cy + y * (pcb_w / 2 - 6)]]
         );
         vent_clearance = 6;  // min distance (mm) a vent hole must keep from any peg center
-        vent_col_x  = nano_l / 2 - 10;              // half-width, based on the Nano (the wider of the two boards)
-        vent_col_y0 = nano_cy - nano_w / 2 + 10;     // just above the Nano's bottom edge
+        vent_col_x  = nano_w / 2 - 10;               // half-width, based on the Nano (still the wider of the two boards even rotated: 79 > pcb_l's 70)
+        vent_col_y0 = nano_cy - nano_l / 2 + 10;     // just above the Nano's bottom edge — nano_l is now its half-height, rotated
         vent_col_y1 = pcb_cy + pcb_w / 2 - 8;        // just below the protoboard's top edge
         for (vx = [-vent_col_x : 15 : vent_col_x], vy = [vent_col_y0 : 15 : vent_col_y1])
             if (min([for (p = vent_pegs) norm([nano_cx + vx, vy] - p)]) > vent_clearance)
@@ -524,25 +589,24 @@ module back_panel() {
                     cylinder(h = panel_thickness + 0.2, r = 3);
 
         // Cable pass-through, in the open gap between the two
-        // component columns.
+        // component columns. Single 12mm hole — a barrel jack plug
+        // for the Nano's power plus a couple of thin solenoid wires,
+        // not a wide bundle, so no need for the old two-circle hull.
         translate([cable_cx, cable_cy, panel_inner_z - 0.1])
-            linear_extrude(panel_thickness + 0.2)
-                hull()
-                    for (x = [-1, 1])
-                        translate([x * 8, 0])
-                            circle(r = 6);
+            cylinder(h = panel_thickness + 0.2, r = 6);
     }
 
     // Mounted boards — added AFTER the difference(), same reasoning
     // as v2: this close to the panel's own face, they'd otherwise
     // fall inside the vent/cable cuts above and get removed by them.
     //
-    // Nano pegs use the measured, asymmetric hole offsets directly
-    // (nano_hole_dx/dy) instead of wall_snap_pegs()'s generic
-    // symmetric inset, which doesn't fit this board's real pattern —
-    // and the measured hole radius (nano_hole_r), not snap_peg()'s
-    // generic M3 default.
-    for (dx = nano_hole_dx, dy = nano_hole_dy)
+    // Nano pegs use the measured, asymmetric hole offsets — ROTATED
+    // (nano_mount_dx/dy, see ELECTRONICS LAYOUT) to match the board's
+    // rotated mounting orientation — instead of wall_snap_pegs()'s
+    // generic symmetric inset, which doesn't fit this board's real
+    // pattern, and the measured hole radius (nano_hole_r), not
+    // snap_peg()'s generic M3 default.
+    for (dx = nano_mount_dx, dy = nano_mount_dy)
         translate([nano_cx + dx, nano_cy + dy, panel_inner_z - standoff_h])
             snap_peg(standoff_h, hole_r = nano_hole_r);
     wall_snap_pegs(pcb_cx, pcb_cy, pcb_l, pcb_w, panel_inner_z, standoff_h, inset = 6);
@@ -552,7 +616,7 @@ module back_panel() {
 
     // Reference only, not part of the printed geometry.
     translate([nano_cx, nano_cy, panel_inner_z - standoff_h - nano_h / 2])
-        %cube([nano_l, nano_w, nano_h], center = true);
+        %cube([nano_w, nano_l, nano_h], center = true);  // rotated: w x l footprint, not l x w
     translate([batt_cx, batt_cy, panel_inner_z - standoff_h - batt_h / 2])
         %cube([batt_w, batt_l, batt_h], center = true);  // rotated: w x l footprint, not l x w
     translate([pcb_cx, pcb_cy, panel_inner_z - standoff_h - pcb_thickness / 2])
