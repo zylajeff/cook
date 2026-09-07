@@ -1,57 +1,58 @@
 // ============================================================
-// COOK rig enclosure v2 — single rectangular box, fastener-free:
-// no screws, inserts, nuts, or glue anywhere. Two halves TELESCOPE
-// together lengthwise (front shell's rear collar slides inside the
-// rear shell's front mouth) and lock with a press-fit snap bump —
-// pull apart by hand for service, no tool needed.
+// COOK rig enclosure v3 — single constant-depth box, fastener-free:
+// no screws, inserts, nuts, or glue anywhere. The telescoping
+// two-shell design (v2) is gone. Now it's ONE printed box (front
+// face + all four side walls, open at the back) plus a THIN back
+// panel that slides down into channel grooves cut into the box's
+// own left/right inner walls — closes the box, and pulls back out
+// for service. The CO2 hopper moved off the back (there's no back
+// wall to hang it on anymore) onto the right side wall instead.
 //
 // Open in OpenSCAD (openscad.org). PLACEHOLDER dimensions below are
 // marked "MEASURE YOURS" — confirm against your actual parts, then
 // F5 (preview) before F6 (render) / STL export.
 //
 // Print each part as a SEPARATE STL: set exactly one render_* flag
-// true, F6, export, repeat. render_assembly shows both halves
-// together, telescoped in, for a fit sanity check only.
+// true, F6, export, repeat. render_assembly shows both together for
+// a fit-check only.
 //
-// Material: PETG or ASA — the snap bump needs to flex/spring back
-// without going brittle. PLA is fine if you don't mind reprinting it
-// once the bump wears out.
+// Material: PETG or ASA. Nothing flexes/snaps anymore (no collar,
+// no snap bump) — the panel is a plain slide-and-friction fit — so
+// PLA is a more reasonable option here than it was for v2, though
+// PETG/ASA still resists warping on that big flat panel better.
 //
-// AXIS CONVENTION, read this before editing anything: X = box width
-// (left-right, matches face_w), Y = box height (up-down, matches
-// face_h), Z = box depth (front-to-back). The front face lives in
-// the XY plane at Z=0 for front_shell(); the rear shell's open mouth
-// (which receives the collar) is at its own Z=0, and its closed back
-// cap is at Z=rear_shell_depth. Anything that "stands on the floor"
-// (Nano, battery, protoboard) has its footprint in X-Z and extends
-// upward in +Y from the floor at Y=-inner_h/2 — an earlier draft of
-// this file got that backwards (cut pockets as slices across the
-// depth axis instead of as recesses in the floor) and I only caught
-// it by re-deriving the axes by hand, not by rendering.
+// AXIS CONVENTION: X = box width (face_w), Y = box height (face_h),
+// Z = box depth, front face in the XY plane at Z=0. Unlike v2, this
+// is now the ONLY frame in the file — box_shell() and back_panel()
+// are both authored directly in it, so render_assembly doesn't need
+// to translate anything to line them up. That was a real source of
+// error last time (the collar math needed careful by-hand
+// re-derivation); removing the second local frame removes that
+// whole class of mistake.
 //
-// I do not have OpenSCAD running in the environment this was written
-// in (you confirmed you have it locally) — everything below is
-// worked out from the numbers, not rendered. Spots flagged inline
-// with "FLAG:" are the ones most likely to need a nudge once you
-// actually preview it.
+// I still do not have OpenSCAD running in the environment this was
+// written in — everything below is worked out from the numbers, not
+// rendered. Spots flagged "FLAG:" are the ones most likely to need a
+// nudge once you actually preview it.
 // ============================================================
 
 // ---- WHICH PART TO RENDER ----
-render_front_shell = true;
-render_rear_shell  = false;
-render_assembly    = false;
+render_box      = false;
+render_panel    = true;
+render_assembly = false;
 
 // ---- GLOBAL TOLERANCES ----
 wall      = 2.4;   // shell wall thickness (~6 perimeters at 0.4mm nozzle)
-fit_gap   = 0.25;  // clearance budget for the telescoping collar (per side)
+fit_gap   = 0.25;  // clearance budget for the panel's slide fit
 corner_r  = 3;     // outer corner rounding
 $fn       = 48;
 
 // ============================================================
 // MEASURE-AND-CONFIRM: component footprints
-// Confirmed from spec sheets: display, camera, battery pack, switch
-// panel-hole diameter. Everything else is a reasonable placeholder —
-// measure your actual part and edit before slicing.
+// Unchanged from v2 — confirmed from spec sheets: display, camera,
+// battery pack, switch panel-hole diameter. Everything else is a
+// reasonable placeholder — measure your actual part and edit before
+// slicing.
 // ============================================================
 
 // -- Display: Hosyond 7", CONFIRMED from spec sheet --
@@ -65,10 +66,37 @@ cam_hole_pitch = 21;   // the two M2 mounting holes, this far apart, centered on
 cam_hole_d     = 2.4;  // clearance for an M2 self-tapper / heat-set insert-free press fit
 cam_lens_d     = 9;    // front clearance hole for the lens barrel + ribbon strain relief
 
-// -- Jetson Nano B01 devkit, typical published carrier-board spec —
-//    reasonably reliable (it's a standard part), but verify against
-//    yours before slicing, especially height with your heatsink. --
-nano_l = 100; nano_w = 80; nano_h = 29;
+// -- Jetson Nano, MEASURED directly from NVIDIA's own STEP file for
+//    the B01 dev kit (Jetson_Nano_Dev_Kit_3D_b01.stp, PRODUCT
+//    '142-13449-1000-B01') by parsing its board-outline edges and
+//    mounting-hole circles — not a datasheet guess, not the old
+//    generic placeholder. Board outline: 100.0 x 79.0mm.
+//
+//    You said you actually have the original (A02) board, not B01 —
+//    this file was the closest thing on hand. NVIDIA designed the
+//    B01 carrier board to be mechanically drop-in compatible with
+//    A02 specifically so existing cases wouldn't break, so the board
+//    outline and hole pattern below should carry over — but I
+//    couldn't confirm that against an A02 STEP file directly, so
+//    it's still worth a quick check against your actual board before
+//    slicing anything.
+//
+//    nano_h is the tallest point found anywhere within the board's
+//    own footprint in that STEP file (i.e. heatsink included) — real
+//    data, but specific to whatever heatsink ships with the B01 kit;
+//    if your A02's heatsink/fan shroud is a different height, this
+//    is the one number here still worth measuring directly. --
+nano_l = 100; nano_w = 79; nano_h = 22;
+
+// Mounting-hole offsets from the board's own center — MEASURED, and
+// NOT symmetric (many boards aren't): 4mm/10mm inset from the
+// left/right edges, 17mm/4mm inset from the bottom/top edges. Used
+// directly by the Nano's peg placement in back_panel() instead of
+// wall_snap_pegs()'s generic symmetric inset, which was wrong for
+// this board specifically (it assumed a centered rectangle).
+nano_hole_dx = [-46, 40];      // X offsets from nano_cx: left pair, right pair
+nano_hole_dy = [-22.5, 35.5];  // Y offsets from nano_cy: bottom pair, top pair
+nano_hole_r  = 1.38;           // measured clearance-hole radius (~2.76mm dia, M2.5 clearance)
 
 // -- Aobao 8xAA battery holder, CONFIRMED from the listing:
 //    12.6 x 7.1 x 2.0cm (L x W x H), 14cm leads each. --
@@ -92,14 +120,12 @@ switch_body_len  = 35;  // PLACEHOLDER — clearance needed behind the panel for
 //    verify against your actual brand, some run longer. --
 co2_d       = 12.6;  // clearance diameter (cartridge body + a hair)
 co2_len     = 68;
-co2_count   = 3;      // horizontal channels, stacked vertically — one cartridge each, lying flat
+co2_count   = 3;      // channels, stacked vertically — one cartridge each, lying flat
 
 // ============================================================
-// FRONT-FACE LAYOUT
-// Display centered vertically in its own zone; firing switch to its
-// right; camera centered above the display. All zone maths live here
-// (not buried in a module) so front_shell() and the assembly preview
-// use the exact same numbers.
+// FRONT-FACE LAYOUT — unchanged from v2. Display centered
+// vertically in its own zone; firing switch to its right; camera
+// centered above the display.
 // ============================================================
 side_margin   = 12;   // left/right edge margin
 disp_gap      = 15;   // gap between display's right edge and the switch zone
@@ -113,8 +139,10 @@ bottom_margin = 12;
 face_w = side_margin + disp_l + disp_gap + switch_zone_w + side_margin;
 face_h = top_margin + cam_zone_h + cam_gap + disp_w + bottom_margin;
 
-box_w = face_w;  // outer cross-section, shared by both shells so the
-box_h = face_h;  // assembled box has one continuous flush surface
+box_w = face_w;
+box_h = face_h;
+inner_w = box_w - 2 * wall;
+inner_h = box_h - 2 * wall;
 
 // Display center, measured from the face's own center origin.
 disp_cx = -face_w / 2 + side_margin + disp_l / 2;
@@ -131,50 +159,134 @@ cam_cx = disp_cx;
 cam_cy = face_h / 2 - top_margin - cam_zone_h / 2;
 
 // ============================================================
-// TELESCOPING COLLAR
-// The two shells share box_w x box_h as their OUTER cross-section
-// everywhere except the front shell's last collar_len, which steps
-// its OUTER envelope down by (wall + fit_gap) per side so it slides
-// inside the rear shell's constant-size inner cavity. Short collar
-// walls end up thinner than the main body (wall - fit_gap) — fine
-// for a 14mm span, still >1.5mm at these numbers.
+// BOX DEPTH & THE SLIDE-IN PANEL
+// total_depth is held at the same 101.6mm (4in) the telescoping v2
+// design landed on — "the depth should stay the same" — even though
+// nothing here forces that number anymore. Because v2's collar
+// wasted depth on a double-walled overlap, dropping it actually
+// freed up interior room: wiring_margin below comes out roughly 33mm
+// instead of v2's 19.2mm for the same exterior length.
 //
-// FLAG: reasoned from the numbers, not rendered. If the collar
-// prints snug/loose, the one knob to turn is fit_gap — don't rescale
-// box_w/box_h, everything else depends on those.
+// The panel sits in a channel cut at the very back: one rectangular
+// cut removes material from the top wall (an insertion slot, full
+// panel width) AND grooves into the inner faces of the left/right
+// walls (groove_depth_x deep) in the same operation, because the cut
+// spans the full box height (floor to exterior top) but only
+// panel_w wide — see box_shell() for the actual cube(). The box's
+// own bottom wall (never cut) is the panel's hard stop; nothing else
+// holds it in but gravity, the snug channel fit, and friction — no
+// snap feature this time.
 // ============================================================
-collar_len = 14;
+front_clear_depth = 32;   // unchanged from v2: display PCB + camera standoff + wiring slack
+total_depth       = 101.6;
 
-collar_outer_w = box_w - 2 * (wall + fit_gap);
-collar_outer_h = box_h - 2 * (wall + fit_gap);
+panel_thickness = wall;      // thin panel, same thickness as the box's own walls
+groove_depth_x  = wall / 2;  // how far the channel bites into each side wall — leaves wall/2 of that wall intact behind it
+channel_span    = panel_thickness + fit_gap;      // Z-depth of the channel/slot cut
+channel_z0      = total_depth - channel_span;     // where the channel cut starts, back edge is total_depth
+panel_inner_z   = total_depth - panel_thickness;  // the panel's own inward-facing surface — standoffs project from here, same role back_cap_inner_z played in v2
 
-front_clear_depth = 32;   // behind the face plate: display PCB + camera standoff + wiring slack
-front_shell_depth = front_clear_depth + collar_len;
+panel_w = inner_w + 2 * groove_depth_x - 2 * fit_gap;  // reaches into both grooves, minus slide clearance
+panel_h = inner_h - fit_gap;  // bottom edge is the hard stop against the floor; only the top needs clearance
 
-// ============================================================
-// REAR SHELL DEPTH — components mount flush against the back wall,
-// not on the floor. Depth is driven by whichever part sticks out the
-// farthest (Nano at 29mm, the tallest), not by anyone's length or
-// width — that's what let this shrink from a 240mm rear shell (three
-// parts stacked front-to-back by their footprints) down to about
-// 60mm. Standoffs lift each board off the wall by standoff_h; the
-// wiring_margin beyond that keeps the nearest component comfortably
-// clear of the inserted collar (checked below, not just assumed).
-// ============================================================
-standoff_h       = 5;    // gap between the back wall and the underside of each mounted board
-wiring_margin    = 19.2; // clearance ahead of the tallest component, before the collar zone starts -- sized to land the assembled box at exactly 4in total depth; the rest of this section's math is unchanged, so this is the one knob that moved
+standoff_h       = 5;    // gap between the panel and the underside of each mounted board — unchanged from v2
 component_max_h  = max(nano_h, max(batt_h, pcb_thickness));  // 29mm, Nano
+panel_clear_depth = channel_z0 - front_clear_depth;
+wiring_margin     = panel_clear_depth - standoff_h - component_max_h;
 
-rear_clear_depth = wiring_margin + standoff_h + component_max_h;
-rear_shell_depth = collar_len + rear_clear_depth + wall;
-back_cap_inner_z = rear_shell_depth - wall;
+// FLAG: reasoned from the numbers, not rendered. If wiring_margin
+// prints negative here, front_clear_depth + standoff_h +
+// component_max_h no longer fits in total_depth — widen total_depth
+// before slicing, don't shrink component clearances to force it.
 
-// FLAG: reasoned from the numbers, not rendered. The check that
-// actually matters here: back_cap_inner_z - standoff_h - component_max_h
-// should land at collar_len + wiring_margin, comfortably ahead of the
-// inserted collar — recompute this by hand if you change any of
-// standoff_h/wiring_margin/component_max_h/collar_len, since nothing
-// enforces it automatically.
+// ============================================================
+// CO2 HOPPER — now on a side wall instead of the back. Cartridges
+// still lie on their sides and stack vertically, loaded from the
+// open top, single bottom-slot access (see co2_hopper() below) —
+// only the mounting wall changed, not the magazine mechanism.
+// hopper_side flips which wall it's on with a one-line change; no
+// other numbers below depend on which side you pick.
+// ============================================================
+hopper_side     = 1;   // +1 = right wall (+X), -1 = left wall (-X)
+hopper_cap_t    = wall * 2;  // far-end cap thickness — thicker than the other hopper walls on purpose, see the note below; does NOT affect hopper_depth, so the cartridge clearance is untouched
+hopper_len      = co2_len + 10 + (hopper_cap_t - wall);  // cartridge length + clearance, plus whatever hopper_cap_t added beyond a plain wall — keeps the actual usable interior length (co2_len + 10) unchanged
+hopper_stack_h  = co2_count * (co2_d + 2) + 10;  // stacked cartridges + small gaps + top loading clearance
+hopper_depth    = co2_d + 2 * wall;              // how far the pod sticks out from the side wall — unaffected by hopper_cap_t
+hopper_slot_h   = wall + co2_d;                  // bottom wall thickness + one cartridge — front wall starts exactly where the second cartridge does
+
+// hopper_cap_t only thickens the FAR end wall (the one that has to
+// bridge across stack_h with nothing under it once printed — see
+// co2_hopper()) — not the near end wall, which sits right at the bed
+// with no bridging concern, and not the bottom/outward walls, which
+// bound the cartridge diameter via hopper_depth. Doubling it (2.4mm
+// -> 4.8mm) doesn't shrink the ~54mm span that first bridge layer
+// has to cross — that's a function of stack_h, not wall thickness —
+// but it does make the finished cap stiffer and gives the slicer
+// more solid-infill layers to reinforce a slightly-sagged first
+// layer with. If a print actually fails here, the real fix is
+// enabling supports for just this feature, or shrinking stack_h.
+hopper_z0       = 0;       // flush with the front face — see the print-orientation note below, this is NOT arbitrary
+hopper_cy       = 0;       // vertically centered — nothing else competes for space on this wall anymore
+
+// Printed with the box face-down (front face on the bed, box builds
+// upward in Z) — same orientation the face cutouts already assume.
+// hopper_z0 MUST stay at 0, not some front margin like v2's back
+// hopper had: the hopper's cross-section doesn't grow as Z increases
+// (same footprint at every height), so starting it flush with the
+// bed means every layer sits directly on the one below. Starting it
+// any higher (it was 12 in an earlier draft) would have the pod's
+// full cross-section appear in mid-air over a wall that, up to that
+// height, hadn't grown out that far in X yet — a real unsupported
+// overhang, not a printable feature. If you move the hopper for any
+// other reason, keep this constraint in mind — it isn't about tidy
+// margins, it's about what has to be true for this to print clean.
+//
+// FLAG: reasoned, not rendered. hopper_z0 + hopper_len (currently
+// 0 + 80.6 = 80.6, taller than before now that hopper_cap_t > wall)
+// needs to stay clear of channel_z0 (currently ~98.95) — checked by
+// hand, ~18mm margin — but re-check if you change hopper_cap_t,
+// hopper_len, co2_len, or total_depth.
+
+// ============================================================
+// ELECTRONICS LAYOUT — Nano/battery/protoboard, all mounted to the
+// INSIDE face of the back panel (not the box itself) — pull the
+// panel and the whole populated tray comes with it.
+//
+// Battery pack mounted ROTATED 90° from its natural (l x w) resting
+// orientation: footprint here is batt_w wide x batt_l tall instead
+// of batt_l wide x batt_w tall. Reason: the cable pass-through needs
+// to sit at true lower-center (X=0), and batt_l (126mm) is wider
+// than half of inner_w (249.1mm) — even pushed flush against a
+// wall with zero margin, a batt_l-wide battery still crosses X=0 by
+// about 1.5mm, no matter where it's placed. Rotated, its footprint
+// is only batt_w (71mm) wide, fitting in one column with room to
+// spare and leaving the center genuinely clear. Doesn't affect the
+// battery holder itself — it's a plastic AA holder, no orientation-
+// sensitive leads or switch position to worry about.
+//
+// Battery gets its own column on the left (tall and narrow); Nano
+// and protoboard stack in a column on the right (short and wide);
+// the gap between the two columns is where the cable hole goes.
+// ============================================================
+component_margin = 8;   // clearance from each column to the interior wall
+
+batt_cx = -inner_w / 2 + batt_w / 2 + component_margin;
+batt_cy = -inner_h / 2 + batt_l / 2 + 5;
+
+nano_cx = inner_w / 2 - nano_l / 2 - component_margin;
+nano_cy = -inner_h / 2 + nano_w / 2 + 5;
+pcb_cx  = nano_cx;
+pcb_cy  = nano_cy + nano_w / 2 + 9 + pcb_w / 2;  // stacked above the Nano, 9mm gap
+
+// Cable pass-through (relay/solenoid wiring + Nano's power lead):
+// true lower-center, same spot v2 had it. FLAG: reasoned by hand —
+// the hull(r=6, 16mm apart) it cuts is ~28mm wide, and the gap
+// between the two columns here is ~62mm wide with X=0 sitting about
+// 16.5mm clear of the Nano/protoboard column's edge, so this should
+// clear both columns, but it's a closer margin than most of this
+// file's other clearances.
+cable_cx = 0;
+cable_cy = -inner_h / 2 + 20;
 
 // ============================================================
 // BUILDING BLOCKS
@@ -189,50 +301,35 @@ module rounded_box(l, w, h, r) {
                     circle(r = r);
 }
 
-// CO2 hopper: ONE gravity-fed magazine, not a rack you can reach into
-// at any level. Load from the open top; cartridges lie on their
-// sides (long axis along X) and stack directly on each other inside
-// a shaft that's solid on ALL FOUR sides — back, both ends, AND the
-// front — for every level except the bottom one. Only the bottom
-// slot_h of the front is left open: that's the single access point.
-// Pull the bottom cartridge out and the whole stack above drops down
-// one position under gravity, refilling it — you physically can't
-// reach in and pull a middle or top one instead. Origin at the
-// housing's own bottom-back corner, +X/+Y/+Z.
-module co2_hopper(l, stack_h, depth, wall_t, slot_h) {
+// CO2 hopper: ONE gravity-fed magazine, solid on all sides except a
+// bottom access slot in the outward-facing wall. Local frame here is
+// MOUNT-RELATIVE, not world-relative: local X = protrusion off the
+// mounting wall (0 = flush against it), local Y = vertical stack,
+// local Z = cartridge length. No back wall in this version — v2's
+// version needed one because its back cap wasn't reliably solid
+// everywhere; here the box's own side wall is already solid across
+// its full depth, so mounting flush against it (see box_shell())
+// closes the pod automatically, with nothing redundant to model.
+module co2_hopper(len, stack_h, depth, wall_t, slot_h, cap_t = wall) {
     union() {
-        cube([l, stack_h, wall_t]);                  // back wall, against the box
-        cube([l, wall_t, depth]);                     // bottom wall
-        cube([wall_t, stack_h, depth]);                // left end wall
-        translate([l - wall_t, 0, 0])
-            cube([wall_t, stack_h, depth]);            // right end wall
-        translate([0, slot_h, depth - wall_t])
-            cube([l, stack_h - slot_h, wall_t]);        // front wall, everywhere ABOVE the bottom access slot
+        cube([depth, wall_t, len]);                          // bottom wall
+        cube([depth, stack_h, wall_t]);                       // near end wall — right at the bed, no bridging concern, stays plain wall_t thick
+        translate([0, 0, len - cap_t])
+            cube([depth, stack_h, cap_t]);                     // far end wall — the one that has to bridge (spans the full stack_h in one go, over what was previously just the bottom wall + a strip of outward wall below it); cap_t defaults to wall_t but callers can thicken just this one wall — see hopper_cap_t
+        translate([depth - wall_t, slot_h, 0])
+            cube([wall_t, stack_h - slot_h, len]);              // outward wall, everywhere ABOVE the bottom access slot
     }
-}
-
-// Snap bump: a small dome the front shell's collar wears on the
-// outside, mating into snap_dimple() cut into the rear shell's inner
-// collar wall. Press-fit, not a flexing cantilever — simplest thing
-// that reliably retains a telescoping joint like this one.
-module snap_bump(r = 2.2) {
-    sphere(r = r);
-}
-
-module snap_dimple(r = 2.2, clr = 0.15) {
-    sphere(r = r + clr);
 }
 
 // Snap peg: pushes through a board's own mounting hole and retains
 // it there — shaft sized for a light slide fit, then a barb that
 // bulges wider than the hole so the board has to flex slightly to
-// pop over it, and a tapered tip so it starts easily. Once seated,
-// the barb sits proud on the far side of the board and resists it
-// coming back off in any direction, including sliding down under
-// gravity — unlike a plain post, which a vertically-mounted board
-// would just slide off. hole_r is a PLACEHOLDER (1.6mm, generic M3
-// clearance) — measure the board's actual hole diameter before
-// slicing. Origin at the peg's own base, +Z.
+// pop over it, and a tapered tip so it starts easily. hole_r is a
+// PLACEHOLDER (1.6mm, generic M3 clearance) — measure the board's
+// actual hole diameter before slicing. Origin at the peg's own base,
+// +Z (the base end is what fuses into the mounting wall via the
+// union in box_shell()/back_panel(); the barb/tip end is what a
+// board's hole slides onto).
 module snap_peg(shaft_h, hole_r = 1.6, barb_extra = 0.4) {
     shaft_r = hole_r - 0.2;
     barb_r  = hole_r + barb_extra;
@@ -246,42 +343,34 @@ module snap_peg(shaft_h, hole_r = 1.6, barb_extra = 0.4) {
 // Four snap pegs for a board WITH real mounting holes (Nano,
 // protoboard): footprint fx x fy, centered at (cx, cy), pegs inset
 // from the true corners by `inset` — a stand-in for the board's own
-// hole pattern, which isn't known yet. Move these to match the real
-// hole positions once you've measured the board; the peg shape
-// itself (snap_peg()) doesn't need to change.
+// hole pattern, which isn't known yet. z0 is the mounting wall's own
+// inner face; pegs project standoff_h away from it, toward -Z.
 module wall_snap_pegs(cx, cy, fx, fy, z0, standoff_h, inset = 8) {
     for (x = [-1, 1], y = [-1, 1])
         translate([cx + x * (fx / 2 - inset), cy + y * (fy / 2 - inset), z0 - standoff_h])
             snap_peg(standoff_h);
 }
 
-// Shelf bracket for a board with NO mounting holes (the battery
-// pack): a horizontal ledge it physically rests on — actual support
-// against gravity, which a peg-in-a-hole can't provide here since
-// there's no hole — plus a low front lip so it can't slide forward
-// off the shelf and out of the box. fx = shelf width (X), depth =
-// how far it protrudes off the wall (should clear standoff_h + the
-// battery's own height), bottom_y = where the battery's underside
-// should sit. Origin at z0 = back_cap_inner_z, extending toward the
-// mouth (-Z).
-module wall_shelf(cx, bottom_y, fx, depth, z0, wall_t, lip_h = 4) {
-    translate([cx - fx / 2, bottom_y - wall_t, z0 - depth])
-        cube([fx, wall_t, depth]);                        // the shelf itself — top surface lands exactly at bottom_y
-    translate([cx - fx / 2, bottom_y, z0 - depth])
-        cube([fx, lip_h, wall_t]);                         // stop at the outer edge — battery slides in from outside, along the shelf, until it hits this
+// Retaining rails for a board with NO mounting holes (the battery
+// pack): two plain walls, one along its top edge and one along its
+// bottom, running the board's full depth — a snug slot it sits in,
+// held by fit and friction, the same way the back panel itself is
+// held by its own channel (no separate shelf ledge or end-stop lip).
+// fy is the board's own footprint height (its extent in Y); the
+// rails sit fit_gap clear of it on each side so it can actually
+// slide in.
+module wall_rails(cx, cy, fx, fy, depth, z0, wall_t, clr = fit_gap) {
+    translate([cx - fx / 2, cy + fy / 2 + clr, z0 - depth])
+        cube([fx, wall_t, depth]);
+    translate([cx - fx / 2, cy - fy / 2 - clr - wall_t, z0 - depth])
+        cube([fx, wall_t, depth]);
 }
 
 // Retaining sleeve for a flat panel mounted behind a front-face
 // window (the display): a snug frame surrounding all FOUR edges of
-// its outer footprint, not just a bottom shelf — a screen needs to
-// stay precisely aligned with its cutout, not merely "not fall out",
-// so it's captured on every side rather than just resting on one.
-// Slides in from the open back of the shell during assembly until
-// its front bezel meets the thin shoulder already cut around the
-// active-area window (see front_shell()); this sleeve is what stops
-// it sliding down under gravity or rattling side to side afterward,
-// which that shoulder alone never did. z0 = the face (z=0 side),
-// extends into the shell in +Z.
+// its outer footprint. Slides in from the open back during assembly
+// until its front bezel meets the thin shoulder cut around the
+// active-area window (see box_shell()).
 module display_sleeve(cx, cy, l, w, depth, wall_t, clr) {
     difference() {
         translate([cx, cy, 0])
@@ -294,276 +383,192 @@ module display_sleeve(cx, cy, l, w, depth, wall_t, clr) {
 }
 
 // ============================================================
-// PART 1 — FRONT SHELL
-// Carries the control face (display, switch, camera). Its rear
-// collar_len telescopes into the rear shell. The CO2 hopper lives on
-// the rear shell instead (see PART 2) — it needs to run most of the
-// box's depth for the cartridges to lie flat, and putting the whole
-// thing on one shell avoids splitting a channel across the parting
-// line. Print face-down, no supports needed for the face cutouts.
+// PART 1 — BOX
+// One piece: front face (display/switch/camera), all four side
+// walls, full total_depth, open at the back. The channel cut at the
+// back does double duty — see the comment on it below. CO2 hopper
+// mounted on the exterior of whichever side wall hopper_side picks.
+// Print face-down, no supports needed for the face cutouts.
 // ============================================================
-module front_shell() {
+module box_shell() {
     difference() {
         union() {
-            // Outer solid: main body full box_w x box_h for
-            // front_clear_depth, stepping down to the collar's
-            // smaller cross-section for the last collar_len.
-            rounded_box(box_w, box_h, front_clear_depth, corner_r);
-            translate([0, 0, front_clear_depth])
-                linear_extrude(collar_len)
-                    hull()
-                        for (x = [-1, 1], y = [-1, 1])
-                            translate([x * (collar_outer_w / 2 - corner_r),
-                                       y * (collar_outer_h / 2 - corner_r)])
-                                circle(r = corner_r);
+            rounded_box(box_w, box_h, total_depth, corner_r);
 
-            // Snap bumps near the collar's leading tip, on its two
-            // long (width) faces.
-            for (side = [-1, 1])
-                translate([side * (collar_outer_w / 2), 0, front_shell_depth - 4])
-                    rotate([0, side > 0 ? 90 : -90, 0])
-                        snap_bump();
+            // CO2 hopper, flush against the outside of the chosen
+            // side wall. mirror() flips only X (not Z, unlike a
+            // rotate) so the "which end is the mounting face" logic
+            // stays simple to check by hand: local X=0 always lands
+            // at world X = hopper_side * box_w/2 regardless of side.
+            if (hopper_side > 0)
+                translate([box_w / 2, hopper_cy - hopper_stack_h / 2, hopper_z0])
+                    co2_hopper(hopper_len, hopper_stack_h, hopper_depth, wall, hopper_slot_h, hopper_cap_t);
+            else
+                translate([-box_w / 2, hopper_cy - hopper_stack_h / 2, hopper_z0])
+                    mirror([1, 0, 0])
+                        co2_hopper(hopper_len, hopper_stack_h, hopper_depth, wall, hopper_slot_h, hopper_cap_t);
         }
 
-        // Hollow the interior out from behind the front face. Two
-        // pieces matching the two outer pieces above: main body
-        // cavity, then the collar's own (smaller) cavity so its
-        // walls come out to wall - fit_gap, not wall.
+        // Hollow interior, open the whole way through the back
+        // (unlike v2's rear shell, this box has no back wall of its
+        // own at all — the panel is the only thing that closes it).
         translate([0, 0, wall])
-            linear_extrude(front_clear_depth)
+            linear_extrude(total_depth - wall + 0.2)
                 hull()
                     for (x = [-1, 1], y = [-1, 1])
                         translate([x * (box_w / 2 - wall - corner_r),
                                    y * (box_h / 2 - wall - corner_r)])
                             circle(r = corner_r);
-        translate([0, 0, front_clear_depth])
-            linear_extrude(collar_len + 0.2)
-                hull()
-                    for (x = [-1, 1], y = [-1, 1])
-                        translate([x * (collar_outer_w / 2 - (wall - fit_gap) - corner_r),
-                                   y * (collar_outer_h / 2 - (wall - fit_gap) - corner_r)])
-                            circle(r = corner_r);
 
         // -- Front face cutouts, all in the z=0 face --
-        // Display window: cutout through the face, sized to the
-        // ACTIVE area so the bezel itself hides the display's own
-        // frame. The thin ring of material left around this window
-        // (between it and the display's full outer edge) is what the
-        // display's front bezel rests against — see display_sleeve()
-        // below for what actually keeps it there instead of sliding
-        // down under gravity.
         translate([disp_cx, disp_cy, -0.1])
             linear_extrude(wall + 0.2)
                 square([disp_active_l, disp_active_w], center = true);
 
-        // Switch panel cutout.
         translate([switch_cx, switch_cy, -0.1])
             cylinder(h = wall + switch_body_len, r = switch_bushing_d / 2);
 
-        // Camera lens + mounting-hole cutouts.
         translate([cam_cx, cam_cy, -0.1])
             cylinder(h = wall + 0.2, r = cam_lens_d / 2);
         for (x = [-1, 1])
             translate([cam_cx + x * cam_hole_pitch / 2, cam_cy, -0.1])
                 cylinder(h = wall + 0.2, r = cam_hole_d / 2);
 
-        // CSI ribbon channel: a slot from just behind the camera
-        // mount down into the main cavity, wide enough for the flex
-        // ribbon to bend through without kinking.
-        // FLAG: 10mm is a guess at what a CSI ribbon needs to bend
-        // through without kinking — widen this in the preview if
-        // your ribbon looks pinched.
+        // CSI ribbon channel, same as v2.
         translate([cam_cx - 5, cam_cy - cam_zone_h / 2, wall])
             cube([10, cam_gap + 4, front_clear_depth]);
+
+        // -- Back channel: ONE cut that does two jobs at once. It
+        // spans the full panel width (X) and the full box height (Y,
+        // floor to exterior top surface), but only channel_span deep
+        // (Z, at the very back). Where it's wide (X) but only
+        // channel_span deep, it's the top-wall insertion slot; where
+        // it's narrow (X, at the two edges) but runs the full height,
+        // it's the left/right guide grooves. Both fall out of the
+        // same cube() because panel_w/2 + fit_gap works out to
+        // exactly inner_w/2 + groove_depth_x — verified by hand
+        // above where panel_w is defined, not rendered.
+        translate([-(panel_w / 2 + fit_gap), -inner_h / 2, channel_z0])
+            cube([panel_w + 2 * fit_gap, inner_h / 2 + box_h / 2 + 0.1, channel_span + 0.1]);
     }
 
-    // Camera snap pegs: added AFTER the difference() above (a sibling
-    // statement, implicitly unioned with it), same reasoning as the
-    // rear shell's mounted boards — geometry this close to the face
-    // would otherwise fall inside the cavity cut and get removed.
-    // Unlike the Nano/battery/protoboard, this hole pattern IS
-    // confirmed (Camera Module v2's real 21mm pitch), so these pegs
-    // are a real fit, not a placeholder — short shaft (4mm) keeps the
-    // board close to the face so its lens lands right behind
-    // cam_lens_d instead of sitting recessed deep in the cavity.
+    // Camera snap pegs and display sleeve — added AFTER the
+    // difference() (sibling statement, implicitly unioned), same as
+    // v2, same reasoning: geometry this close to the face would
+    // otherwise fall inside the cavity cut and get removed by it.
     cam_standoff_h = 4;
     for (x = [-1, 1])
         translate([cam_cx + x * cam_hole_pitch / 2, cam_cy, wall])
             snap_peg(cam_standoff_h, hole_r = cam_hole_d / 2);
 
-    // Display retaining sleeve — see display_sleeve() for why this
-    // replaced the old redundant pocket cut. Depth extends a couple
-    // mm past the display's own thickness so it's not a hair-trigger
-    // fit against disp_h alone.
     display_sleeve(disp_cx, disp_cy, disp_l, disp_w, disp_h + 2, wall, disp_sleeve_clr);
 
-    // Reference only, not part of the printed geometry: transparent
-    // outlines of the camera board sitting on its pegs, and the
-    // display sitting in its sleeve.
+    // Reference only, not part of the printed geometry.
     translate([cam_cx, cam_cy, wall + cam_standoff_h + cam_pcb_h / 2])
         %cube([cam_pcb_l, cam_pcb_w, cam_pcb_h], center = true);
     translate([disp_cx, disp_cy, wall + disp_h / 2])
         %cube([disp_l, disp_w, disp_h], center = true);
+    for (i = [0 : co2_count - 1])
+        translate([hopper_side * (box_w / 2 + wall + co2_d / 2),
+                   hopper_cy - hopper_stack_h / 2 + wall + co2_d / 2 + i * co2_d,
+                   hopper_z0 + wall])
+            %cylinder(h = co2_len, r = co2_d / 2, $fn = 24);
 }
 
 // ============================================================
-// PART 2 — REAR SHELL
-// Closed back face: Nano ventilation, one combined cable pass-through
-// for the relay wiring and the Nano's power lead, CO2 hopper, and
-// standoff-mounted Nano/battery/protoboard — all three bolted flush
-// against the INSIDE of this same back wall (footprint in X-Y,
-// standing only standoff_h + their own thickness into the box) rather
-// than resting on a floor deep inside it. That's what keeps this
-// shell around 60mm deep instead of 240mm. Its front mouth recesses
-// collar_len deep, constant box_w x box_h cavity, so the front
-// shell's collar slides straight in. Print open-mouth down, no
-// supports needed for the vent holes or the hopper's open top.
+// PART 2 — BACK PANEL
+// Thin slide-in cover, authored directly in the box's own Z frame
+// (panel_inner_z to total_depth) — no separate local origin, unlike
+// v2's front/rear shells, so no translate is needed to place it in
+// render_assembly. Carries the Nano/battery/protoboard standoffs,
+// vent grid, and cable pass-through — all of it moved off the box
+// itself so pulling the panel pulls the whole populated tray with
+// it. Print flat, face down (panel_thickness up), no supports.
 // ============================================================
-module rear_shell() {
-    inner_w = box_w - 2 * wall;
-    inner_h = box_h - 2 * wall;
-
-    // CO2 hopper: ONE gravity-fed magazine mounted flush against the
-    // back wall — protrudes only hopper_depth (about one cartridge
-    // diameter). Cartridges lie on their sides, long axis along X,
-    // loaded from the open top and stacking directly on each other in
-    // Y inside a shaft that's enclosed on all sides (co2_hopper()'s
-    // back/bottom/ends/front walls) except one open slot at the very
-    // bottom — the only place you can actually pull a cartridge out,
-    // so removing it drops the whole stack down one position rather
-    // than letting you grab from the middle. Positioned at
-    // back_cap_inner_z (where the solid cap begins, not the hollow
-    // cavity behind it) so the housing's back wall fuses through the
-    // full cap thickness — starting at the cap's outer face instead
-    // would have had that back wall carved away by the interior
-    // cavity cut below before ever reaching solid material.
-    hopper_l       = co2_len + 10;                     // cartridge length + clearance
-    hopper_stack_h = co2_count * (co2_d + 2) + 10;      // stacked cartridges + small gaps + top loading clearance
-    hopper_depth   = co2_d + 2 * wall;
-    hopper_slot_h  = wall + co2_d;  // bottom wall thickness + one cartridge, so the front wall starts exactly where the second cartridge does, not partway through the first
-    hopper_cx      = 70;  // right portion of the back face
-
-    // Nano + battery mounted side by side in the left two-thirds of
-    // the back face (clear of the hopper's x=31..109 footprint);
-    // protoboard tucked into the clear space directly above the
-    // hopper. Verified pairwise (nano/battery/protoboard/hopper) for
-    // zero overlap and staying within box_w x box_h before committing
-    // to these numbers — see the conversation, not re-derived here.
-    hopper_left_edge = hopper_cx - hopper_l / 2;               // 31
-    left_zone_w      = hopper_left_edge - (-box_w / 2);        // 152.95
-    nano_cx = -box_w / 2 + left_zone_w / 2;
-    batt_cx = nano_cx;
-    batt_cy = -box_h / 2 + batt_w / 2 + 5;                     // battery's 71mm edge sets its own height here
-    nano_cy = batt_cy + batt_w / 2 + 10 + nano_w / 2;          // stacked directly above the battery, 10mm gap
-    pcb_cx  = hopper_cx;
-    pcb_cy  = (hopper_stack_h / 2 + box_h / 2) / 2;            // centered in the clear space above the hopper
-
+module back_panel() {
     difference() {
         union() {
-            rounded_box(box_w, box_h, rear_shell_depth, corner_r);
-            translate([hopper_cx - hopper_l / 2, -hopper_stack_h / 2, back_cap_inner_z])
-                co2_hopper(hopper_l, hopper_stack_h, hopper_depth, wall, hopper_slot_h);
+            // Main slab, sized to reach into both channel grooves.
+            translate([-panel_w / 2, -inner_h / 2, panel_inner_z])
+                cube([panel_w, panel_h, panel_thickness]);
+
+            // Thumb tab: sticks up past the box's exterior top
+            // surface once the panel is fully seated, so there's
+            // something to grab to pull it back out.
+            translate([-10, inner_h / 2 - fit_gap, panel_inner_z])
+                cube([20, (box_h / 2 + 3) - (inner_h / 2 - fit_gap), panel_thickness]);
         }
 
-        // Hollow interior, open at the mouth (z=0), stopping short
-        // of the back by one wall thickness so a solid cap remains
-        // for the vent holes and cable slot to cut into. An earlier
-        // draft cut this all the way through both ends, which left
-        // no back cap at all.
-        translate([0, 0, -0.1])
-            linear_extrude(back_cap_inner_z + 0.1)
-                hull()
-                    for (x = [-1, 1], y = [-1, 1])
-                        translate([x * (inner_w / 2 - corner_r),
-                                   y * (inner_h / 2 - corner_r)])
-                            circle(r = corner_r);
+        // Ventilation grid, spanning the FULL nano+protoboard column
+        // height (both boards, not just behind the Nano like v2) for
+        // more airflow. The column mixes two boards with two
+        // different peg patterns (the Nano's real, measured, off-
+        // center hole positions and the protoboard's still-generic
+        // 6mm inset), so rather than hand-picking which corners to
+        // skip the way v2 did, positions are generated on a fixed
+        // pitch across the whole column and filtered against the
+        // actual peg coordinates — more robust than a hand-tuned
+        // corner skip, and it has to be since the Nano's pegs aren't
+        // even symmetric anymore.
+        vent_pegs = concat(
+            [for (dx = nano_hole_dx, dy = nano_hole_dy) [nano_cx + dx, nano_cy + dy]],
+            [for (x = [-1, 1], y = [-1, 1]) [pcb_cx + x * (pcb_l / 2 - 6), pcb_cy + y * (pcb_w / 2 - 6)]]
+        );
+        vent_clearance = 6;  // min distance (mm) a vent hole must keep from any peg center
+        vent_col_x  = nano_l / 2 - 10;              // half-width, based on the Nano (the wider of the two boards)
+        vent_col_y0 = nano_cy - nano_w / 2 + 10;     // just above the Nano's bottom edge
+        vent_col_y1 = pcb_cy + pcb_w / 2 - 8;        // just below the protoboard's top edge
+        for (vx = [-vent_col_x : 15 : vent_col_x], vy = [vent_col_y0 : 15 : vent_col_y1])
+            if (min([for (p = vent_pegs) norm([nano_cx + vx, vy] - p)]) > vent_clearance)
+                translate([nano_cx + vx, vy, panel_inner_z - 0.1])
+                    cylinder(h = panel_thickness + 0.2, r = 3);
 
-        // Snap dimples matching front_shell()'s bumps. Measured from
-        // THIS shell's own mouth (z=0): the collar's tip lands
-        // collar_len inside once fully seated, and the bump sits 4mm
-        // short of that tip — so the dimple belongs at collar_len-4
-        // from the mouth, not from the back cap. (An earlier draft
-        // had this measured from the wrong end entirely.)
-        for (side = [-1, 1])
-            translate([side * (inner_w / 2), 0, collar_len - 4])
-                rotate([0, side > 0 ? 90 : -90, 0])
-                    snap_dimple();
-
-        // Back-face ventilation grid, cut through the back cap
-        // (Z from back_cap_inner_z to rear_shell_depth), directly
-        // behind the Nano's own new position. The four outermost
-        // corners are skipped: at 6 rows, they land close enough to
-        // the Nano's own mounting pegs (inset 8mm from the board's
-        // corners) to cut into a peg's base — checked by measuring
-        // peg-to-hole distance, not eyeballed.
-        for (xf = [-2, -1, 0, 1, 2], yf = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5])
-            if (!(abs(xf) == 2 && abs(yf) == 2.5))
-                translate([nano_cx + xf * (nano_l / 5), nano_cy + yf * (nano_w / 6),
-                           back_cap_inner_z - 0.1])
-                    cylinder(h = wall + 0.2, r = 3);
-
-        // Combined cable pass-through, also through the back cap:
-        // relay/solenoid wiring and the Nano's own power-barrel lead
-        // exit here. Positioned in the one large area nothing else
-        // occupies — below the hopper, right of the Nano/battery
-        // column — rather than fighting for space near the boards.
-        translate([hopper_cx, -box_h / 2 + (box_h / 2 - hopper_stack_h / 2) / 2,
-                   back_cap_inner_z - 0.1])
-            linear_extrude(wall + 0.2)
+        // Cable pass-through, in the open gap between the two
+        // component columns.
+        translate([cable_cx, cable_cy, panel_inner_z - 0.1])
+            linear_extrude(panel_thickness + 0.2)
                 hull()
                     for (x = [-1, 1])
                         translate([x * 8, 0])
                             circle(r = 6);
     }
 
-    // Mounted boards: added AFTER the difference() above (a sibling
-    // statement, implicitly unioned with it) rather than inside it —
-    // geometry positioned this close to the back cap would otherwise
-    // fall inside the interior-cavity cut and get removed by it
-    // before ever printing. Nano and the protoboard both plausibly
-    // have real mounting holes, so they get snap pegs (secures them
-    // in every direction, including against gravity); the battery has
-    // none, so it gets an actual shelf to rest on instead — a peg
-    // pattern would be pure guesswork there with nothing to secure it
-    // to. Peg/post positions are still generic placeholders, not
-    // matched to any board's real hole pattern.
-    wall_snap_pegs(nano_cx, nano_cy, nano_l, nano_w, back_cap_inner_z, standoff_h);
-    wall_snap_pegs(pcb_cx, pcb_cy, pcb_l, pcb_w, back_cap_inner_z, standoff_h, inset = 6);
-    wall_shelf(batt_cx, batt_cy - batt_w / 2, batt_l, standoff_h + batt_h, back_cap_inner_z, wall, lip_h = 12);
+    // Mounted boards — added AFTER the difference(), same reasoning
+    // as v2: this close to the panel's own face, they'd otherwise
+    // fall inside the vent/cable cuts above and get removed by them.
+    //
+    // Nano pegs use the measured, asymmetric hole offsets directly
+    // (nano_hole_dx/dy) instead of wall_snap_pegs()'s generic
+    // symmetric inset, which doesn't fit this board's real pattern —
+    // and the measured hole radius (nano_hole_r), not snap_peg()'s
+    // generic M3 default.
+    for (dx = nano_hole_dx, dy = nano_hole_dy)
+        translate([nano_cx + dx, nano_cy + dy, panel_inner_z - standoff_h])
+            snap_peg(standoff_h, hole_r = nano_hole_r);
+    wall_snap_pegs(pcb_cx, pcb_cy, pcb_l, pcb_w, panel_inner_z, standoff_h, inset = 6);
+    // fx = batt_w, fy = batt_l here — the rails follow the battery's
+    // rotated (w x l) footprint, not its natural (l x w) orientation.
+    wall_rails(batt_cx, batt_cy, batt_w, batt_l, standoff_h + batt_h, panel_inner_z, wall);
 
-    // Reference only, not part of the printed geometry: transparent
-    // (OpenSCAD's % modifier, auto-excluded from F6/render and STL)
-    // outlines of the Nano, battery, and protoboard sitting on their
-    // standoffs, plus co2_count cartridges in the hopper — so you can
-    // actually see the layout instead of reading bare posts and an
-    // empty hopper shell.
-    translate([nano_cx, nano_cy, back_cap_inner_z - standoff_h - nano_h / 2])
+    // Reference only, not part of the printed geometry.
+    translate([nano_cx, nano_cy, panel_inner_z - standoff_h - nano_h / 2])
         %cube([nano_l, nano_w, nano_h], center = true);
-    translate([batt_cx, batt_cy, back_cap_inner_z - standoff_h - batt_h / 2])
-        %cube([batt_l, batt_w, batt_h], center = true);
-    translate([pcb_cx, pcb_cy, back_cap_inner_z - standoff_h - pcb_thickness / 2])
+    translate([batt_cx, batt_cy, panel_inner_z - standoff_h - batt_h / 2])
+        %cube([batt_w, batt_l, batt_h], center = true);  // rotated: w x l footprint, not l x w
+    translate([pcb_cx, pcb_cy, panel_inner_z - standoff_h - pcb_thickness / 2])
         %cube([pcb_l, pcb_w, pcb_thickness], center = true);
-    for (i = [0 : co2_count - 1])
-        translate([hopper_cx,
-                   -hopper_stack_h / 2 + wall + co2_d / 2 + i * co2_d,
-                   back_cap_inner_z + wall + co2_d / 2])
-            rotate([0, 90, 0])
-                %cylinder(h = co2_len, r = co2_d / 2, center = true, $fn = 24);
 }
 
 // ============================================================
 // RENDER
 // ============================================================
-if (render_front_shell) front_shell();
-if (render_rear_shell)  rear_shell();
+if (render_box)   box_shell();
+if (render_panel) back_panel();
 
-// Assembled preview: rear shell fixed at its own origin (mouth at
-// z=0, back cap at z=rear_shell_depth); front shell's own z=0 (its
-// face) shifted to z=-front_clear_depth so its collar tip lands at
-// z=collar_len inside the rear shell — matching where the snap
-// dimples were placed above. Fit-check only, not for slicing.
+// Assembled preview: both modules already share the same Z frame,
+// so this is a plain union — no translate to get wrong. Fit-check
+// only, not for slicing.
 if (render_assembly) {
-    rear_shell();
-    translate([0, 0, -front_clear_depth])
-        front_shell();
+    box_shell();
+    back_panel();
 }

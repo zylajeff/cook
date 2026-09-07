@@ -44,10 +44,12 @@ vendor — generic plumbing/hardware store parts (see
 ## Enclosure
 
 Printed, not purchased — see [hardware/enclosure.scad](../hardware/enclosure.scad).
-Two-part telescoping box (front shell with the display/switch/camera face and
-CO2 hopper, rear shell with Nano/battery/protoboard bays), no fasteners. PETG
-or ASA — the snap bump that holds the two halves together needs to flex
-without going brittle.
+One constant-depth box (display/switch/camera face, all four walls, CO2
+hopper mounted on the right side wall) plus a thin back panel that slides
+into channel grooves in the box's own left/right walls — carries the
+Nano/battery/protoboard, pulls out for service. No fasteners, no flexing
+parts, so PLA is a reasonable option here; PETG/ASA still resists warping
+better on the panel's flat unsupported span.
 
 ## Not used in round one
 
