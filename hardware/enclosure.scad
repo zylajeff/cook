@@ -562,12 +562,28 @@ module back_panel() {
 // ============================================================
 // RENDER
 // ============================================================
-if (render_box)   box_shell();
-if (render_panel) back_panel();
+if (render_box) box_shell();
+
+// back_panel() is authored in the box's shared design frame (needed
+// for render_assembly to fit-check correctly, no translate to get
+// wrong) — but that frame has the panel's flat face at MAX Z and the
+// standoffs reaching down to MIN Z, which is backwards from what a
+// slicer assumes by default (native Z-up = flat face at low Z, bed-
+// ready). Loaded as-is, a slicer would try to rest this on the
+// standoff tips instead of the flat face. So the standalone export
+// gets a print-time-only flip — rotate 180° about X to put the flat
+// face at the bottom, then translate back near the origin — that
+// does NOT touch the fit geometry used by render_assembly below,
+// only this one export.
+if (render_panel)
+    translate([0, 0, total_depth])
+        rotate([180, 0, 0])
+            back_panel();
 
 // Assembled preview: both modules already share the same Z frame,
 // so this is a plain union — no translate to get wrong. Fit-check
-// only, not for slicing.
+// only, not for slicing — this one is deliberately in the
+// UN-flipped design frame, not the print-ready orientation above.
 if (render_assembly) {
     box_shell();
     back_panel();
