@@ -225,7 +225,7 @@ def test_mask_view_survives_the_wrapper():
 def test_build_detector_wraps_the_colour_backend():
     from cook_vision.detectors import DownscaledDetector
 
-    built = build_detector(DetectorConfig(process_width=640))
+    built = build_detector(DetectorConfig(backend="color", process_width=640))
     assert isinstance(built, DownscaledDetector)
     assert built.name == "color"
     assert not isinstance(build_detector(DetectorConfig(process_width=0)), DownscaledDetector)

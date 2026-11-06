@@ -57,11 +57,11 @@ frame interval. `COOK_CAMERA_FPS=60` if more is ever needed.
 `Detector` has three implementations behind one interface, chosen by
 `COOK_DETECTOR_BACKEND`:
 
-- **`color`** (default) — HSV maize threshold plus Block-M shape scoring. No
+- **`color`** — HSV maize threshold plus Block-M shape scoring. No
   training data. **Known weakness:** HSV fails outright on a dim, warm-white-
   balanced image — measured 0.000 against 0.997 for a red-minus-blue chroma
   difference under the same conditions.
-- **`chroma`** — same Block-M shape scoring, but masks on raw `R − B` instead
+- **`chroma`** (default) — same Block-M shape scoring, but masks on raw `R − B` instead
   of HSV hue. Fixes the weakness above: R stays above B for maize (and B above
   R for Michigan blue) well past the point where hue becomes unreliable. Trade-
   off: it can't tell maize from generic red, or blue from violet, the way hue

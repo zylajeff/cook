@@ -51,8 +51,9 @@ class CameraConfig:
 class DetectorConfig:
     #: ``color`` (HSV, no training required), ``chroma`` (R-B difference, also
     #: no training, survives a dim/warm-white-balanced image where HSV can't),
-    #: or ``onnx`` (trained YOLOv8 export).
-    backend: str = "color"
+    #: or ``onnx`` (trained YOLOv8 export). Chroma is the default: it is what
+    #: was field-tested on the Nano against the real target.
+    backend: str = "chroma"
     confidence: float = 0.45
     #: --- onnx backend ---
     model_path: str = "models/block-m.onnx"

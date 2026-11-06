@@ -65,13 +65,17 @@ target the barrel is *pointed at*.
 
 ## Detection
 
-Two interchangeable backends behind one interface:
+Three interchangeable backends behind one interface:
 
-- **`color`** (default) — isolates the maize hue, then scores each blob against
+- **`color`** — isolates the maize hue, then scores each blob against
   a rasterised Block-M template on four cues: `cv2.matchShapes` distance,
   bounding-box extent, convex-hull solidity, and aspect ratio. Needs no training
   data. On the synthetic bench a Block M scores ≈0.98 while a yellow disc scores
   ≈0.36 and a yellow square ≈0.26.
+- **`chroma`** (default) — the same shape scoring, but masks on raw red-minus-
+  blue instead of hue, so it survives the dim, warm-white-balanced image where
+  HSV fails. The trade-off: it can't tell maize from plain red, so shape
+  scoring is the only guard against a red decoy.
 - **`onnx`** — a trained single-class YOLOv8 export. Drop it at
   `models/block-m.onnx` and run `cook-vision --model models/block-m.onnx`.
 
