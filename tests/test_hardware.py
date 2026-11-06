@@ -29,10 +29,10 @@ def test_pulse_energises_then_releases(backend):
     config = GpioConfig()
     relay = SolenoidRelay(backend, config, 0.5)
     relay.pulse(0.05)
-    assert backend.read(config.relay_pin) == LOW  # active-low = energised
+    assert backend.read(config.relay_pin) == HIGH  # default is active-high
     assert relay.is_energised
     time.sleep(0.12)
-    assert backend.read(config.relay_pin) == HIGH
+    assert backend.read(config.relay_pin) == LOW
     assert not relay.is_energised
 
 
@@ -47,7 +47,7 @@ def test_watchdog_releases_a_stuck_coil(backend):
     relay.pulse(0.02)
     time.sleep(0.05)
     relay.update()
-    assert backend.read(config.relay_pin) == HIGH
+    assert backend.read(config.relay_pin) == LOW
 
 
 def test_deenergise_is_idempotent(backend):
@@ -56,7 +56,7 @@ def test_deenergise_is_idempotent(backend):
     relay.pulse(0.5)
     relay.deenergise()
     relay.deenergise()
-    assert backend.read(config.relay_pin) == HIGH
+    assert backend.read(config.relay_pin) == LOW
 
 
 def test_arm_switch_reads_safe_when_open(backend):

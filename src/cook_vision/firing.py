@@ -14,6 +14,11 @@ from .tracker import LOCKED
 
 LOGGER = logging.getLogger(__name__)
 
+#: Gates a manual trigger press still has to pass. The target gates (lock,
+#: confidence, bore) are skipped so the operator can fire with nothing in view;
+#: these are the ones that keep a person safe and are never overridden.
+SAFETY_INTERLOCKS = ("startup", "arm switch", "software safe", "cooldown", "relay idle")
+
 
 class FireDecision:
     """Result of evaluating the interlock chain for one frame."""
@@ -108,11 +113,16 @@ class FireController:
         self.relay.update()
         decision = self.evaluate(tracker, frame_shape)
 
-        triggered = self.config.auto_fire or self._fire_requested
-        if decision.ready and triggered:
+        held = [name for name in SAFETY_INTERLOCKS if not decision.checks[name]]
+        if self._fire_requested:
+            if held:
+                LOGGER.info("Manual trigger refused: %s", ", ".join(held))
+            else:
+                if not decision.ready:
+                    LOGGER.info("Manual override: %s", ", ".join(decision.blocking))
+                self._fire()
+        elif self.config.auto_fire and decision.ready:
             self._fire()
-        elif self._fire_requested and not decision.ready:
-            LOGGER.info("Manual trigger refused: %s", ", ".join(decision.blocking))
 
         self._fire_requested = False
         return decision

@@ -135,6 +135,36 @@ def test_manual_mode_needs_a_trigger_press(rig):
     assert controller.shots == 1
 
 
+def test_manual_trigger_overrides_the_target_gates(rig):
+    backend, gpio_config, switch, relay, controller, tracker = rig
+    controller.config.auto_fire = False
+    arm(backend, gpio_config)
+    switch.update()
+    controller.request_fire()          # nothing in view at all
+    decision = controller.update(tracker, SHAPE)
+    assert "target lock" in decision.blocking
+    assert controller.shots == 1
+
+
+@pytest.mark.parametrize("gate", ["arm switch", "software safe", "cooldown"])
+def test_manual_trigger_never_overrides_a_safety_gate(rig, gate):
+    backend, gpio_config, switch, relay, controller, tracker = rig
+    controller.config.auto_fire = False
+    arm(backend, gpio_config, armed=gate != "arm switch")
+    switch.update()
+    if gate == "software safe":
+        controller.toggle_software_safe()
+    if gate == "cooldown":
+        controller.request_fire()
+        controller.update(tracker, SHAPE)
+        relay.deenergise()
+    shots = controller.shots
+    controller.request_fire()
+    decision = controller.update(tracker, SHAPE)
+    assert gate in decision.blocking
+    assert controller.shots == shots
+
+
 def test_a_refused_trigger_press_is_not_latched_for_later(rig):
     backend, gpio_config, switch, relay, controller, tracker = rig
     controller.config.auto_fire = False

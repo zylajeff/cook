@@ -19,7 +19,7 @@ from .tracker import TargetTracker
 
 LOGGER = logging.getLogger("cook")
 
-HELP = """keys:  q/ESC quit   s software safety   f manual fire
+HELP = """keys:  q/ESC quit   s software safety   f manual fire (no target needed)
        a toggle mock arm switch   m mask view   w windowed/fullscreen"""
 
 

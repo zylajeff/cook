@@ -95,7 +95,7 @@ class TrackerConfig:
     #: Exponential smoothing applied to box corners; higher is snappier.
     smoothing: float = 0.45
     #: Consecutive frames a target must persist before the seeker declares LOCK.
-    lock_frames: int = 8
+    lock_frames: int = 6
     #: Frames a track survives without a matching detection before it is dropped.
     max_missed_frames: int = 6
 
@@ -127,8 +127,9 @@ class GpioConfig:
     #: Jetson Nano 40-pin header numbers (GPIO.BOARD numbering).
     relay_pin: int = 18
     arm_switch_pin: int = 16
-    #: Cheap opto-isolated relay boards energise on a LOW input.
-    relay_active_low: bool = True
+    #: Pin HIGH = fire. The pin drives a 2N2222 that pulls the relay's IN low,
+    #: with the relay board jumpered to L (low-level trigger). See docs/wiring.md.
+    relay_active_low: bool = False
     #: Switch wired to ground and held high by the internal pull-up.
     arm_switch_active_low: bool = True
     #: Seconds the arm switch must hold a level before the change is accepted.
