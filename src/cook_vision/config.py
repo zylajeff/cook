@@ -70,14 +70,16 @@ class DetectorConfig:
     #: labelled training crops (__train/block_m), not the ideal swatch.
     blue_lower: Tuple[int, int, int] = (100, 78, 50)
     blue_upper: Tuple[int, int, int] = (124, 255, 255)
-    min_area_px: int = 900
+    #: Measured at process_width. 250 keeps an ~8in M in play out past 10 ft.
+    min_area_px: int = 250
     #: Blur before the HSV threshold. The morphological open already removes
     #: speckle, so this is off by default; turn it on for a very noisy sensor.
     blur: bool = False
     #: Morphology kernel size. 3 is enough once the frame is downscaled.
     morph_size: int = 3
     #: Upper bound on cv2.matchShapes distance to the block-M template.
-    max_shape_distance: float = 0.65
+    #: Slightly loose because small, distant contours come out blocky.
+    max_shape_distance: float = 0.75
     #: --- chroma backend ---
     #: Minimum |R-B| (0-255) to call a pixel maize or Michigan blue. Measured
     #: dim maize (B 73 G 88 R 113) has R-B=40; this sits with margin below it.
@@ -85,7 +87,8 @@ class DetectorConfig:
     #: Run detection on a frame downscaled to this width, then rescale the boxes
     #: back. Detection cost falls with the square of the ratio, and a Block M big
     #: enough to shoot at is still tens of pixels across at 640. 0 disables it.
-    process_width: int = 640
+    #: 1024 is full capture width: no downscale, for range at 10+ ft.
+    process_width: int = 1024
 
 
 @dataclass
