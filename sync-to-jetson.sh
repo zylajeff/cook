@@ -8,7 +8,7 @@
 #   ./sync-to-jetson.sh user@host [path]
 set -euo pipefail
 
-TARGET="${1:-burninator@192.168.86.30}"
+TARGET="${1:-burninator@192.168.86.174}"
 REMOTE_DIR="${2:-cook}"
 
 cd "$(dirname "$0")"
